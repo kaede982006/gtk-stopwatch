@@ -1,26 +1,32 @@
 CC     = gcc
-CFLAGS = -Wall $(shell pkg-config --cflags gtk4) -MMD -MP
-LDLIBS = $(shell pkg-config --libs gtk4)
+CFLAGS := -Wall $(shell pkg-config --cflags gtk4) -MMD -MP
+LDLIBS := $(shell pkg-config --libs gtk4)
 
-OBJS = main.o stopwatch.o resources.o
+OBJS = $(addprefix objects/,main.o stopwatch.o resources.o)
 
 .PHONY: all clean test
-all: gtk-stopwatch
+all: build/gtk-stopwatch
 
-gtk-stopwatch: $(OBJS)
+build/gtk-stopwatch: $(OBJS) | build
 	$(CC) -o $@ $^ $(LDLIBS)
+
+objects/%.o: %.c | objects
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+build objects:
+	mkdir -p $@
 
 # builder.ui를 실행 파일 안에 넣는다: 어느 폴더에서 실행해도 UI를 찾는다
 resources.c: gresource.xml builder.ui
 	glib-compile-resources --target=$@ --generate-source $<
 
-test: test-stopwatch
-	./test-stopwatch
+test: build/test-stopwatch
+	./build/test-stopwatch
 
-test-stopwatch: test.o stopwatch.o
+build/test-stopwatch: objects/test.o objects/stopwatch.o | build
 	$(CC) -o $@ $^ $(LDLIBS)
 
 clean:
-	rm -f gtk-stopwatch test-stopwatch resources.c *.o *.d
+	rm -rf build objects resources.c
 
--include $(wildcard *.d)
+-include $(wildcard objects/*.d)
